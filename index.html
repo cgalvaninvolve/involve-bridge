@@ -1,20 +1,48 @@
 <!DOCTYPE html>
 <html>
-<head><meta charset="UTF-8"></head>
+<head>
+  <meta charset="UTF-8">
+  <title>Involve Bridge</title>
+</head>
 <body>
 <script>
-window.addEventListener("message", async (e) => {
-  if (e.data?.type !== "CREATE_DRAFT") return;
-  const { to, subject, body, msgId, scriptUrl } = e.data;
-  try {
-    const params = new URLSearchParams({ to, subject, body });
-    const r = await fetch(`${scriptUrl}?${params}`);
-    const d = await r.json();
-    e.source.postMessage({ msgId, ...d }, e.origin);
-  } catch(err) {
-    e.source.postMessage({ msgId, success: false, error: err.message }, e.origin);
-  }
-});
+  // Listen for messages from the parent artifact
+  window.addEventListener("message", async function(e) {
+    // Accept messages from any origin (artifact sandbox)
+    if (!e.data || e.data.type !== "CREATE_DRAFT") return;
+
+    const { msgId, to, subject, body, scriptUrl } = e.data;
+
+    try {
+      const params = new URLSearchParams();
+      params.append("to", to);
+      params.append("subject", subject);
+      params.append("body", body);
+
+      const response = await fetch(scriptUrl + "?" + params.toString(), {
+        method: "GET"
+      });
+
+      const data = await response.json();
+
+      // Reply back to artifact
+      e.source.postMessage({
+        msgId: msgId,
+        success: data.success === true,
+        error: data.error || null
+      }, "*");
+
+    } catch(err) {
+      e.source.postMessage({
+        msgId: msgId,
+        success: false,
+        error: err.message
+      }, "*");
+    }
+  });
+
+  // Signal ready
+  window.parent.postMessage({ type: "BRIDGE_READY" }, "*");
 </script>
 </body>
 </html>
