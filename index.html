@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"></head>
+<body>
+<script>
+window.addEventListener("message", async (e) => {
+  if (e.data?.type !== "CREATE_DRAFT") return;
+  const { to, subject, body, msgId, scriptUrl } = e.data;
+  try {
+    const params = new URLSearchParams({ to, subject, body });
+    const r = await fetch(`${scriptUrl}?${params}`);
+    const d = await r.json();
+    e.source.postMessage({ msgId, ...d }, e.origin);
+  } catch(err) {
+    e.source.postMessage({ msgId, success: false, error: err.message }, e.origin);
+  }
+});
+</script>
+</body>
+</html>
